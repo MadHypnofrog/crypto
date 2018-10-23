@@ -65,6 +65,7 @@ public class Treap {
 //        System.out.println("CURRENT: " + current);
 //        System.out.println("CHILD: " + child);
         Node.Modification modCurrent = current.box;
+        //if(modCurrent.singleSnapshot) {}
         if (modCurrent != null) {
             if ((s.equals(modCurrent.getModificator()) && modCurrent.content == child) ||
                     (((s.equals("left") && current.left == child) ||
@@ -93,7 +94,7 @@ public class Treap {
         if (modCurrent != null) {
             return new Node(current, data);
         }
-        current.evaluate(new Node.Modification(data, "data", version), "data");
+        current.box = new Node.Modification(data, "data", getVersion());
         return current;
     }
 
@@ -137,8 +138,14 @@ public class Treap {
 //                    System.out.println("FOUND!! RIGHT IS NULL");
                     return node.getLeft();
                 } else {
+                    Node oldNode = node;
                     node = assign(first(node.getRight()), node);
-                    node = assign(node, remove(node.right, node.getData()), "right");
+//                    System.out.println("!!!!!VERSION " + (getVersion() - 1) + " \n" + getRoot(getVersion() - 1));
+                    if(oldNode != node) {
+                        node.right = remove(node.right, node.getData());
+                    } else {
+                        node = assign(node, remove(node.right, node.getData()), "right");
+                    }
                 }
             }
         }
@@ -189,7 +196,7 @@ public class Treap {
             Node.Modification box = node.box;
             Node copy = node.copy();
             if (box != null && box.timestamp <= data.getLastVersion()) {
-                System.out.println("EVALUATED!");
+//                System.out.println("EVALUATED!");
                 copy.evaluate(box, box.getModificator());
             }
             int compare = data.compareTo(copy.getData());
@@ -224,6 +231,7 @@ public class Treap {
             Tuple data;
             boolean leftModified, rightModified;
             boolean dataModified;
+            boolean singleSnapshot;
 
             Modification(Node content, boolean leftModified, boolean rightModified, int version) {
                 this.content = content;
@@ -242,6 +250,9 @@ public class Treap {
                 this.data = data;
                 setModificator(s);
                 timestamp = version;
+            }
+            public void setSingle(boolean flag) {
+                singleSnapshot = flag;
             }
 
             public void setData(Tuple data) {
@@ -298,8 +309,8 @@ public class Treap {
         }
 
         public Node(Node input, Tuple data) {
-            right = input.right;
-            left = input.left;
+            right = input.getRight();
+            left = input.getLeft();
             priority = input.priority;
             this.data = data;
         }

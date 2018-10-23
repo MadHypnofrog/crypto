@@ -8,10 +8,19 @@ public class Main {
         user1.insert(3, "test");
         System.out.println(user1.query(3, 0));
         System.out.println(user1.query(3, 1));
+        System.out.println(user1.query(7, 1));
         user1.insert(7, "test2");
+        System.out.println(user1.query(7, 1));
+        System.out.println(user1.query(7, 2));
         user1.remove(3);
-        System.out.println(Server.treap.getRoot(6));
+//        System.out.println(Server.treap.getRoot(6));
         System.out.println(user1.query(3, 2));
+        System.out.println(user1.query(3, 3));
+        user1.insert(3, "kek");
+        System.out.println(user1.query(3, 0));
+        System.out.println(user1.query(3, 1));
+        System.out.println(user1.query(3, 2));
+        System.out.println(user1.query(3, 4));
     }
 
 }

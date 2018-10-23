@@ -5,7 +5,7 @@ import java.util.Arrays;
 public class User {
 
     private boolean checkSign(Tuple tuple) throws IllegalCertificateException {
-        System.out.println(tuple);
+//        System.out.println(tuple);
         int curDate = tuple.getCertificate().date / 3;
         int certDate = tuple.getLastVersion();
         byte[] hashCert = tuple.getCertificate().getCertHash();
