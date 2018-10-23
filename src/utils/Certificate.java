@@ -6,9 +6,9 @@ public class Certificate {
     byte[] publicKeyNo;
     int id, date;
 
-    Certificate(byte[] PublicKeyYes, byte[] PublicKeyNo, int id, int date) {
-        this.publicKeyYes = PublicKeyYes;
-        this.publicKeyNo = PublicKeyNo;
+    Certificate(byte[] publicKeyYes, byte[] publicKeyNo, int id, int date) {
+        this.publicKeyYes = publicKeyYes;
+        this.publicKeyNo = publicKeyNo;
         this.id = id;
         this.date = date;
     }

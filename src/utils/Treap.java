@@ -1,8 +1,5 @@
 package utils;
 
-import com.sun.org.apache.xpath.internal.operations.Mod;
-import utils.Tuple;
-
 import java.util.ArrayList;
 import java.util.Random;
 
@@ -13,7 +10,10 @@ public class Treap {
     private int version = 0;
 
     Treap() {
-        roots.add(new Node());
+        Node first = new Node();
+        first.left = new Node(new Tuple(0, Integer.MIN_VALUE, Integer.MAX_VALUE, ""));
+        roots.add(first);
+        CertificateAuthor.signTreap(this);
     }
 
     void incrementVersion() {
@@ -22,6 +22,10 @@ public class Treap {
 
     int getVersion() {
         return version;
+    }
+
+    public Node getRoot(int num) {
+        return roots.get(num);
     }
 
     public void add(Tuple data) {
@@ -40,19 +44,16 @@ public class Treap {
         if (compare < 0) {
             Node oldLeft = node.getLeft();
             Node newLeft = add(oldLeft, data);
-            Node rotated = null;
-            if (node.priority > node.getLeft().priority) {
-                return rotateRight(node);
+            if (node.priority > newLeft.priority) {
+                return rotateRight(node, newLeft);
             } else {
                 return assign(node, newLeft, "left");
             }
         } else if (compare > 0) {
             Node oldRight = node.getRight();
             Node newRight = add(oldRight, data);
-            Node rotated = null;
-            node.right = add(node.getRight(), data);
-            if (node.priority > node.getRight().priority) {
-                return rotateLeft(node);
+            if (node.priority > newRight.priority) {
+                return rotateLeft(node, newRight);
             } else {
                 return assign(node, newRight, "right");
             }
@@ -61,44 +62,48 @@ public class Treap {
     }
 
     public Node assign(Node current, Node child, String s) {
+//        System.out.println("CURRENT: " + current);
+//        System.out.println("CHILD: " + child);
         Node.Modification modCurrent = current.box;
         if (modCurrent != null) {
-            if ((s.equals(modCurrent.get()) && modCurrent.content == child) ||
+            if ((s.equals(modCurrent.getModificator()) && modCurrent.content == child) ||
                     (((s.equals("left") && current.left == child) ||
-                            (s.equals("right") && current.right == child)) && !s.equals(modCurrent.get()))) {
+                            (s.equals("right") && current.right == child)) && !s.equals(modCurrent.getModificator()))) {
                 return current;
             } else {
+//                System.out.println("KEK!");
                 Node newCurrent = new Node(current);
-                newCurrent.evaluate(modCurrent, modCurrent.get());
-                newCurrent.evaluate(new Node.Modification(child, s), s);
+                newCurrent.evaluate(modCurrent, modCurrent.getModificator());
+//                System.out.println("NEW CURRENT: " + newCurrent);
+                newCurrent.evaluate(new Node.Modification(child, s, version), s);
+//                System.out.println("NEW CURRENT: " + newCurrent);
                 return newCurrent;
             }
         }
         if ((s.equals("left") && current.left == child) || (s.equals("right") && current.right == child)) {
             return current;
         } else {
-            current.box = new Node.Modification(child, s);
+            current.box = new Node.Modification(child, s, version);
             return current;
         }
     }
+
     public Node assign(Tuple data, Node current) {
         Node.Modification modCurrent = current.box;
-        if(modCurrent != null) {
+        if (modCurrent != null) {
             return new Node(current, data);
         }
-        current.evaluate(new Node.Modification(data, "data"), "data");
+        current.evaluate(new Node.Modification(data, "data", version), "data");
         return current;
     }
 
-    private Node rotateRight(Node node) {
-        Node lnode = node.getLeft();
+    private Node rotateRight(Node node, Node lnode) {
         node = assign(node, lnode.getRight(), "left");
         lnode = assign(lnode, node, "right");
         return lnode;
     }
 
-    private Node rotateLeft(Node node) {
-        Node rnode = node.getRight();
+    private Node rotateLeft(Node node, Node rnode) {
         node = assign(node, rnode.getLeft(), "right");
         rnode = assign(rnode, node, "left");
         return rnode;
@@ -108,11 +113,12 @@ public class Treap {
         incrementVersion();
         Node fakeNode = new Node();
         Node oldNode = roots.get(roots.size() - 1);
-        if(oldNode.left == null) {
+        if (oldNode.left == null) {
             return false;
         }
+        fakeNode.left = remove(oldNode.left, data);
+//        System.out.println("FAKE: " + fakeNode.left);
         roots.add(fakeNode);
-        fakeNode.left = remove(oldNode, data);
         return fakeNode.left != null;
     }
 
@@ -120,13 +126,15 @@ public class Treap {
         if (node != null) {
             int compare = data.compareTo(node.getData());
             if (compare < 0) {
-                node.left = assign(node, remove(node.getLeft(), data), "left");
+                node = assign(node, remove(node.getLeft(), data), "left");
             } else if (compare > 0) {
-                node.right = assign(node, remove(node.getRight(), data), "right");
+                node = assign(node, remove(node.getRight(), data), "right");
             } else {
                 if (node.getLeft() == null) {
+//                    System.out.println("FOUND!! LEFT IS NULL");
                     return node.getRight();
                 } else if (node.getRight() == null) {
+//                    System.out.println("FOUND!! RIGHT IS NULL");
                     return node.getLeft();
                 } else {
                     node = assign(first(node.getRight()), node);
@@ -138,7 +146,7 @@ public class Treap {
     }
 
     /*public Tuple first() {
-        return first(roots.get(roots.size() - 1));
+        return first(roots.getModificator(roots.size() - 1));
     }*/
 
     private Tuple first(Node searchNode) {
@@ -147,56 +155,93 @@ public class Treap {
         return node.getData();
     }
 
-    public Tuple contains(int key, int version) {
-        return contains(new Tuple(version, key,key, ""));
+    public Tuple getExact(int key, int version) {
+        return getExact(new Tuple(3 * version, key, key, ""));
     }
 
-    private Tuple contains(Tuple data) {
-        Node node = roots.get(data.getLastVersion());
+    private Tuple getExact(Tuple data) {
+        Node node = roots.get(data.getLastVersion()).getLeft();
         while (node != null) {
-            int compare = data.compareTo(node.getData());
-            if (compare < 0) node = node.getLeft();
-            else if (compare > 0) node = node.getRight();
-            else return node.data;
+            Node.Modification box = node.box;
+            Node copy = node.copy();
+            if (box != null && box.timestamp <= data.getLastVersion()) copy.evaluate(box, box.getModificator());
+            int compare = data.compareTo(copy.getData());
+            if (compare < 0) node = copy.getLeft();
+            else if (compare > 0) node = copy.getRight();
+            else return copy.data;
         }
         return null;
     }
 
+    public Tuple getLower(int key, int version) {
+        return getLower(key, version, 0);
+    }
+
+    public Tuple getLower(int key, int version, int add) {
+        return getLower(new Tuple(3 * version + add, key, key, ""));
+    }
+
+    private Tuple getLower(Tuple data) {
+        Node node = roots.get(data.getLastVersion()).getLeft();
+        Node prev = node;
+        while (node != null) {
+            prev = node;
+            Node.Modification box = node.box;
+            Node copy = node.copy();
+            if (box != null && box.timestamp <= data.getLastVersion()) {
+                System.out.println("EVALUATED!");
+                copy.evaluate(box, box.getModificator());
+            }
+            int compare = data.compareTo(copy.getData());
+            if (compare < 0) node = copy.getLeft();
+            else if (compare > 0) node = copy.getRight();
+        }
+        return prev.getData();
+    }
+
+    public boolean contains(int key, int version) {
+        return getExact(key, version) != null;
+    }
+
     @Override
     public String toString() {
-        return "utils.Treap{" +
+        return "Treap{" +
                 "root ArrayList=" + roots +
                 '}';
     }
 
 
-    private static class Node {
-        public Node right, left;
-        public int priority = rand.nextInt();
-        public Tuple data;
+     static class Node {
+        Node right, left;
+        int priority = rand.nextInt();
+        Tuple data;
 
         Modification box = null;
 
         private static class Modification {
-            int timestamp = 0;
+            int timestamp;
             Node content;
             Tuple data;
             boolean leftModified, rightModified;
             boolean dataModified;
 
-            Modification(Node content, boolean leftModified, boolean rightModified) {
+            Modification(Node content, boolean leftModified, boolean rightModified, int version) {
                 this.content = content;
                 this.leftModified = leftModified;
                 this.rightModified = rightModified;
+                timestamp = version;
             }
 
-            Modification(Node content, String s) {
+            Modification(Node content, String s, int version) {
                 this.content = content;
-                set(s);
+                setModificator(s);
+                timestamp = version;
             }
-            Modification(Tuple data, String s) {
+
+            Modification(Tuple data, String s, int version) {
                 this.data = data;
-                set(s);
+                setModificator(s);
+                timestamp = version;
             }
 
             public void setData(Tuple data) {
@@ -204,17 +249,17 @@ public class Treap {
                 dataModified = true;
             }
 
-            public void set(String s) {
+            public void setModificator(String s) {
                 if (s.equals("left")) {
                     leftModified = true;
-                } else if(s.equals("right")){
+                } else if (s.equals("right")) {
                     rightModified = true;
                 } else {
                     dataModified = true;
                 }
             }
 
-            public String get() {
+            public String getModificator() {
                 if (leftModified) {
                     return "left";
                 } else if (rightModified) {
@@ -223,6 +268,19 @@ public class Treap {
                     return "data";
                 }
             }
+
+            public String toString() {
+                return "Modification{" +
+                        "data=" + data +
+                        ", content=" + content +
+                        ", modificator=" + getModificator() +
+                        ", timestamp=" + timestamp +
+                        '}';
+            }
+        }
+
+        public Node copy() {
+            return new Node(this);
         }
 
         public Node() {
@@ -238,6 +296,7 @@ public class Treap {
             priority = input.priority;
             data = input.data;
         }
+
         public Node(Node input, Tuple data) {
             right = input.right;
             left = input.left;
@@ -246,16 +305,17 @@ public class Treap {
         }
 
         public Tuple getData() {
-            if(box != null) {
-                if(box.get().equals("data")) {
+            if (box != null) {
+                if (box.getModificator().equals("data")) {
                     return box.data;
                 }
             }
             return data;
         }
+
         public Node getLeft() {
             if (box != null) {
-                if (box.get().equals("left")) {
+                if (box.getModificator().equals("left")) {
                     return box.content;
                 }
             }
@@ -264,7 +324,7 @@ public class Treap {
 
         public Node getRight() {
             if (box != null) {
-                if (box.get().equals("right")) {
+                if (box.getModificator().equals("right")) {
                     return box.content;
                 }
             }
@@ -285,10 +345,11 @@ public class Treap {
         @Override
         public String toString() {
             return "Node{" +
-                    "item=" + data +
-                    ", priority=" + priority +
-                    ", left=" + left +
-                    ", right=" + right +
+                    "\n    item=" + data +
+                    "\n    priority=" + priority +
+                    "\n    left=" + left +
+                    "\n    right=" + right +
+                    "\n    modification=" + box +
                     '}';
         }
     }
