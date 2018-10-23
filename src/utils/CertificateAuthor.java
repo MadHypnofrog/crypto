@@ -23,6 +23,10 @@ public class CertificateAuthor {
         Treap.Node root = treap.getRoot(treap.getVersion()).getLeft();
         signTreapRecursive(root, treap.getVersion());
     }
+    static void signTreap(CopyPersistentTreap treap) {
+        CopyPersistentTreap.Node root = treap.getRoot(treap.getVersion()).left;
+        signTreapRecursive(root, treap.getVersion());
+    }
 
     static void signTreapRecursive(Treap.Node node, int version) {
         Tuple data = node.getData();
@@ -57,6 +61,40 @@ public class CertificateAuthor {
         }
         if (node.getLeft() != null) signTreapRecursive(node.getLeft(), version);
         if (node.getRight() != null) signTreapRecursive(node.getRight(), version);
+    }
+    static void signTreapRecursive(CopyPersistentTreap.Node node, int version) {
+        Tuple data = node.data;
+        if (data.getCertificate() == null) {
+            int id = yesKeys.size();
+            yesKeys.put(id, generate(32));
+            noKeys.put(id, generate(32));
+            Certificate cert = new Certificate(hashNTimes(yesKeys.get(id), VALIDITY), hashNTimes(noKeys.get(id), 1), id, version);
+            cert.set(hashNTimes(yesKeys.get(id), VALIDITY - 1));
+            try {
+                data.update(cert);
+            } catch (Exception ignored) {
+            }
+        } else {
+            data.vEnd += 3;
+            Certificate cert = data.getCertificate();
+            int passed = (version - cert.getDate()) / 3;
+            int id = data.getCertificate().getId();
+            if (passed != VALIDITY - 1) {
+                cert.set(hashNTimes(yesKeys.get(id), VALIDITY - passed - 1));
+            } else {
+                id = yesKeys.size();
+                yesKeys.put(id, generate(32));
+                noKeys.put(id, generate(32));
+                cert = new Certificate(hashNTimes(yesKeys.get(id), VALIDITY), hashNTimes(noKeys.get(id), 1), id, version);
+                cert.set(hashNTimes(yesKeys.get(id), VALIDITY - 1));
+            }
+            try {
+                data.update(cert);
+            } catch (Exception ignored) {
+            }
+        }
+        if (node.left != null) signTreapRecursive(node.left, version);
+        if (node.right != null) signTreapRecursive(node.right, version);
     }
 
     static byte[] generate(int n) {
