@@ -4,9 +4,9 @@ import java.util.Arrays;
 
 public class User {
 
-    private boolean checkSign(Tuple tuple) throws IllegalCertificateException {
+    public boolean checkSign(Tuple tuple) throws IllegalCertificateException {
 //        System.out.println(tuple);
-        int curDate = tuple.getCertificate().date / 3;
+        int curDate = tuple.getCertificate().getDate() / 3;
         int certDate = tuple.getLastVersion();
         byte[] hashCert = tuple.getCertificate().getCertHash();
 
@@ -14,7 +14,7 @@ public class User {
             return false;
         }
 
-        for (int i = 0; i < curDate - certDate - 1; i++) {
+        for (int i = 0; i < certDate - curDate; i++) {
             hashCert = CertificateAuthor.digester.digest(hashCert);
         }
 
@@ -24,20 +24,21 @@ public class User {
         throw new IllegalCertificateException("The server provided an illegal certificate");
     }
 
-    public String query(int key, int version) throws IllegalCertificateException {
-        Tuple res = Server.get(key, version);
-        if (res != null && res.vStart <= version && res.vEnd >= version && res.keyStart <= key && res.keyEnd > key) {
-            if (checkSign(res)) return res.content;
+    public String query(GeneralTreap treap, int key, int version) throws IllegalCertificateException {
+        Tuple res = Server.get(treap, key, version);
+        if (res != null && res.getFirstVersion() <= version && res.getLastVersion() >= version
+                && res.getKeyStart() <= key && res.getKeyEnd() > key) {
+            if (checkSign(res)) return res.getContent();
         }
         return null;
     }
 
-    public void insert(int key, String value) {
-        Server.insert(key, value);
+    public void insert(GeneralTreap treap, int key, String value) {
+        Server.insert(treap, key, value);
     }
 
-    public void remove(int key) {
-        Server.remove(key);
+    public void remove(GeneralTreap treap, int key) {
+        Server.remove(treap, key);
     }
 
 }

@@ -1,42 +1,34 @@
 package utils;
 
 import java.util.ArrayList;
-import java.util.Random;
 
 
-public class CopyPersistentTreap {
-
-    private static final Random rand = new Random();
-    ArrayList<Node> roots = new ArrayList<>();
-    int version = 0;
-
-    public void incrementVersion() {
-        version++;
-    }
-    public int getVersion() {
-        return version;
-    }
-    public Node getRoot(int num) {
-        return roots.get(num);
-    }
-
-    public Node recursiveCopyTreap() {
-        Node currentFake = roots.get(roots.size() - 1);
-        return new Node(currentFake);
-    }
+public class CopyPersistentTreap extends GeneralTreap {
 
     CopyPersistentTreap() {
         Node first = new Node();
         first.left = new Node(new Tuple(0, Integer.MIN_VALUE, Integer.MAX_VALUE, ""));
+        ArrayList<GeneralNode> roots = new ArrayList<>();
         roots.add(first);
+        setRoots(roots);
         CertificateAuthor.signTreap(this);
     }
-    public void add(Tuple data) {
-        roots.add(recursiveCopyTreap());
-        Node currentFake = roots.get(roots.size() - 1);
-        add(currentFake.left, data);
+
+    private GeneralNode recursiveCopyTreap() {
+        GeneralNode currentFake = getRoots().get(getRootsSize() - 1);
+        return new Node(currentFake);
     }
-    private Node add(Node node, Tuple data) {
+
+    public void add(Tuple data) {
+        incrementVersion();
+        ArrayList<GeneralNode> roots = getRoots();
+        roots.add(recursiveCopyTreap());
+        GeneralNode currentFake = roots.get(roots.size() - 1);
+        currentFake.left = add(currentFake.left, data);
+        setRoots(roots);
+    }
+
+    private GeneralNode add(GeneralNode node, Tuple data) {
         if (node == null)
             return new Node(data);
 
@@ -53,27 +45,30 @@ public class CopyPersistentTreap {
         return node;
     }
 
-    private Node rotateRight(Node node) {
-        Node lnode = node.left;
+    private GeneralNode rotateRight(GeneralNode node) {
+        GeneralNode lnode = node.left;
         node.left = lnode.right;
         lnode.right = node;
         return lnode;
     }
 
-    private Node rotateLeft(Node node) {
-        Node rnode = node.right;
+    private GeneralNode rotateLeft(GeneralNode node) {
+        GeneralNode rnode = node.right;
         node.right = rnode.left;
         rnode.left = node;
         return rnode;
     }
 
     public void remove(Tuple data) {
+        incrementVersion();
+        ArrayList<GeneralNode> roots = getRoots();
         roots.add(recursiveCopyTreap());
-        Node currentFake = roots.get(roots.size() - 1);
-        remove(currentFake.left, data);
+        GeneralNode currentFake = roots.get(roots.size() - 1);
+        currentFake.left = remove(currentFake.left, data);
+        setRoots(roots);
     }
 
-    private Node remove(Node node, Tuple data) {
+    private GeneralNode remove(GeneralNode node, Tuple data) {
         if (node != null) {
             int compare = data.compareTo(node.data);
             if (compare < 0) {
@@ -93,31 +88,18 @@ public class CopyPersistentTreap {
         }
         return node;
     }
-//
-//    public boolean contains(Tuple data, int version) {
-//        Node node = roots.get(version);
-//        while (node != null) {
-//            int compare = data.compareTo(node.data);
-//            if (compare < 0) node = node.left;
-//            else if (compare > 0) node = node.right;
-//            else return true;
-//        }
-//        return false;
-//    }
-public Tuple getExact(int key, int version) {
+
+    public Tuple getExact(int key, int version) {
     return getExact(new Tuple(3 * version, key, key, ""));
 }
 
     private Tuple getExact(Tuple data) {
-        Node node = roots.get(data.getLastVersion()).getLeft();
+        GeneralNode node = getRoots().get(data.getLastVersion()).left;
         while (node != null) {
-            Node.Modification box = node.box;
-            Node copy = node.copy();
-            if (box != null && box.timestamp <= data.getLastVersion()) copy.evaluate(box, box.getModificator());
-            int compare = data.compareTo(copy.getData());
-            if (compare < 0) node = copy.getLeft();
-            else if (compare > 0) node = copy.getRight();
-            else return copy.data;
+            int compare = data.compareTo(node.data);
+            if (compare < 0) node = node.left;
+            else if (compare > 0) node = node.right;
+            else return node.data;
         }
         return null;
     }
@@ -131,11 +113,13 @@ public Tuple getExact(int key, int version) {
     }
 
     private Tuple getLower(Tuple data) {
-        Node node = roots.get(data.getLastVersion()).left;
-        Node prev = node;
+        GeneralNode node = getRoots().get(data.getLastVersion()).left;
+        GeneralNode prev = node;
         while (node != null) {
             prev = node;
             int compare = data.compareTo(prev.data);
+            if (node.data.getKeyStart() <= data.getKeyStart() && node.data.getKeyEnd() > data.getKeyEnd())
+                return node.data;
             if (compare < 0) node = prev.left;
             else if (compare > 0) node = prev.right;
         }
@@ -147,12 +131,8 @@ public Tuple getExact(int key, int version) {
     }
 
 
-    public Tuple first() {
-        return first(root);
-    }
-
-    private Tuple first(Node searchNode) {
-        Node node = searchNode;
+    private Tuple first(GeneralNode searchNode) {
+        GeneralNode node = searchNode;
         while (node.left != null) node = node.left;
         return node.data;
     }
@@ -160,21 +140,16 @@ public Tuple getExact(int key, int version) {
     @Override
     public String toString() {
         return "Treap{" +
-                "root=" + root +
+                "ArrayList root=" + getRoots() +
                 '}';
     }
 
-    static class Node {
-        public Node right, left;
-        public int priority = rand.nextInt();
-        public Tuple data;
-
-        public Node(Tuple data) {
-            this.data = data;
+    static class Node extends GeneralNode {
+        Node(Tuple data) {
+            super(data);
         }
-        public Node() {}
 
-        public Node(Node input) {
+        Node(GeneralNode input) {
             if(input.left != null) {
                 this.left = new Node(input.left);
             }
@@ -184,14 +159,16 @@ public Tuple getExact(int key, int version) {
             this.priority = input.priority;
             this.data = input.data;
         }
-        @Override
-        public String toString() {
-            return "Node{" +
-                    "item=" + data +
-                    ", priority=" + priority +
-                    ", left=" + left +
-                    ", right=" + right +
-                    '}';
+
+        Node() {
+        }
+
+        GeneralNode getLeft() {
+            return getLeftInternal();
+        }
+
+        GeneralNode getRight() {
+            return getRightInternal();
         }
     }
 }

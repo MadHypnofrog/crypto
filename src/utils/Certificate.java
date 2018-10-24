@@ -1,10 +1,10 @@
 package utils;
 
 public class Certificate {
-    byte[] certHash;
-    byte[] publicKeyYes;
-    byte[] publicKeyNo;
-    int id, date;
+    private byte[] certHash;
+    private byte[] publicKeyYes;
+    private byte[] publicKeyNo;
+    private int id, date;
 
     Certificate(byte[] publicKeyYes, byte[] publicKeyNo, int id, int date) {
         this.publicKeyYes = publicKeyYes;
@@ -13,27 +13,33 @@ public class Certificate {
         this.date = date;
     }
 
-    public void set(byte[] data) {
+    void set(byte[] data) {
         this.certHash = data;
     }
 
-    public int getDate() {
+    int getDate() {
         return date;
     }
 
-    public int getId() {
+    int getId() {
         return id;
     }
 
-    public byte[] getCertHash() {
+    byte[] getCertHash() {
         return certHash;
     }
 
-    public byte[] getPublicKeyYes() {
+    byte[] getPublicKeyYes() {
         return publicKeyYes;
     }
 
-    public byte[] getPublicKeyNo() {
+    byte[] getPublicKeyNo() {
         return publicKeyNo;
+    }
+
+    Certificate copy() {
+        Certificate newCert = new Certificate(this.publicKeyYes, this.publicKeyNo, this.id, this.date);
+        newCert.certHash = this.certHash;
+        return newCert;
     }
 }

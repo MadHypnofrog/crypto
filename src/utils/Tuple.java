@@ -2,11 +2,11 @@ package utils;
 
 import java.util.Arrays;
 
-class Tuple implements Comparable<Tuple> {
-    int vStart, vEnd;
-    int keyStart, keyEnd;
-    String content;
-    Certificate sign = null;
+public class Tuple implements Comparable<Tuple> {
+    private int vStart, vEnd;
+    private int keyStart, keyEnd;
+    private String content;
+    private Certificate sign = null;
 
     Tuple(int vStart, int keyStart, int keyEnd, String content) {
         this.vStart = vStart;
@@ -19,7 +19,7 @@ class Tuple implements Comparable<Tuple> {
     Tuple(Tuple another) {
         if (another != null) {
             this.vStart = another.vStart;
-            this.vEnd = another.vStart;
+            this.vEnd = another.vEnd;
             this.keyStart = another.keyStart;
             this.keyEnd = another.keyEnd;
             this.content = another.content;
@@ -33,19 +33,46 @@ class Tuple implements Comparable<Tuple> {
             if (!Arrays.equals(sign.getPublicKeyYes(), CertificateAuthor.digester.digest(input))) {
                 throw new IllegalCertificateException("The author did not provide a valid certificate: " + sign);
             }
-        } else if (!Arrays.equals(this.sign.getCertHash(), CertificateAuthor.digester.digest(input))
-                && !Arrays.equals(this.sign.getPublicKeyNo(), CertificateAuthor.digester.digest(input))) {
-            throw new IllegalCertificateException("The author did not provide a valid certificate: " + sign);
+        } else {
+            if (!Arrays.equals(sign.getPublicKeyYes(), CertificateAuthor.digester.digest(input))
+                    && !Arrays.equals(this.sign.getCertHash(), CertificateAuthor.digester.digest(input))
+                    && !Arrays.equals(this.sign.getPublicKeyNo(), CertificateAuthor.digester.digest(input))) {
+                throw new IllegalCertificateException("The author did not provide a valid certificate: " + sign);
+            }
         }
         this.sign = sign;
     }
 
-    public Certificate getCertificate() {
+    Certificate getCertificate() {
         return sign;
     }
 
-    public int getLastVersion() {
+    String getContent() {
+        return content;
+    }
+
+    int getKeyStart() {
+        return keyStart;
+    }
+
+    int getKeyEnd() {
+        return keyEnd;
+    }
+
+    int getFirstVersion() {
+        return vStart;
+    }
+
+    int getLastVersion() {
         return vEnd;
+    }
+
+    void setFirstVersion(int n) {
+        vStart = n;
+    }
+
+    void setLastVersion(int n) {
+        vEnd = n;
     }
 
     @Override
